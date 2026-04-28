@@ -23,7 +23,8 @@ def extract_udm_fields(events_text):
 def extract_metadata_field(rule_text, field_name):
     # Look for lines like $e.metadata.log_type = "AZURE_ACTIVITY"
     # or similar assignments/comparisons.
-    pattern = rf'\$[a-zA-Z0-9_]+\.metadata\.{field_name}\s*=\s*"([^"]+)"'
+    # Support both = and == operators
+    pattern = r'\$[a-zA-Z0-9_]+\.metadata\.' + field_name + r'\s*={1,2}\s*"([^"]+)"'
     matches = re.findall(pattern, rule_text)
     return list(set(matches))
 
@@ -126,7 +127,9 @@ def main():
 
             # Extract from ruleText
             product_event_types = extract_metadata_field(rule_text, 'product_event_type')
-            product_event_types_str = ', '.join(product_event_types) if product_event_types else 'N/A'
+            event_types = extract_metadata_field(rule_text, 'event_type')
+            combined_event_types = list(set(product_event_types + event_types))
+            product_event_types_str = ', '.join(combined_event_types) if combined_event_types else 'N/A'
 
             log_types = extract_metadata_field(rule_text, 'log_type')
             log_types_str = ', '.join(log_types) if log_types else 'N/A'
@@ -176,7 +179,7 @@ def main():
                 if precision != 'N/A': ruleset_agg[key]['precisions'].add(precision)
                 ruleset_agg[key]['tactics'].update(tactic_ids)
                 ruleset_agg[key]['techniques'].update(technique_ids)
-                ruleset_agg[key]['product_event_types'].update(product_event_types)
+                ruleset_agg[key]['product_event_types'].update(combined_event_types)
                 ruleset_agg[key]['log_types'].update(log_types)
                 ruleset_agg[key]['product_names'].update(product_names)
                 ruleset_agg[key]['udm_fields'].update(udm_fields)
